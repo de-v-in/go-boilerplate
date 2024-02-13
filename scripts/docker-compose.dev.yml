@@ -1,0 +1,21 @@
+version: "3"
+services:
+  postgres:
+    image: "postgres"
+    ports:
+      - "5430:5432"
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "helloworld"
+      POSTGRES_DB: "test"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    restart: always
+
+  adminer:
+    image: adminer:4.8.1
+    ports:
+      - "8081:8080"
+    restart: always
+volumes:
+  pg_data:
