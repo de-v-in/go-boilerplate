@@ -1,11 +1,11 @@
-package jsonschema
+package tonic
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
-	"encoding/json"
 )
 
 func GenJSONSchema(data interface{}) string {
@@ -34,6 +34,7 @@ func ToSwaggerSchema(t reflect.Type) map[string]interface{} {
 		schema["type"] = "object"
 		properties := make(map[string]interface{})
 		schema["properties"] = properties
+		requiredFields := []string{}
 
 		for i := 0; i < t.NumField(); i++ {
 			field := t.Field(i)
@@ -44,7 +45,6 @@ func ToSwaggerSchema(t reflect.Type) map[string]interface{} {
 			if fieldName == "" {
 				continue
 			}
-
 
 			fieldKind := field.Type.Kind()
 			if fieldKind == reflect.Pointer {
@@ -66,22 +66,27 @@ func ToSwaggerSchema(t reflect.Type) map[string]interface{} {
 				if len(jsonAttrs) > 1 && jsonAttrs[1] == "omitempty" {
 					fieldSchema["required"] = false
 				}
-				ParseBindingTag(bindingTag, &fieldSchema)
+				isRequired := ParseBindingTag(bindingTag, &fieldSchema)
+				if isRequired {
+					requiredFields = append(requiredFields, fieldName)
+				}
 			}
 
 			properties[fieldName] = fieldSchema
 		}
+		schema["required"] = requiredFields
 	}
 
 	return schema
 }
 
-func ParseBindingTag(bindingTag string, fieldSchema *map[string]interface{}) {
+func ParseBindingTag(bindingTag string, fieldSchema *map[string]interface{}) (isRequired bool) {
 	tags := strings.Split(bindingTag, ",")
 	fieldType, _ := (*fieldSchema)["type"].(string)
+	isRequired = false
 	for _, tag := range tags {
 		if tag == "required" {
-			(*fieldSchema)["required"] = true
+			isRequired = true
 		} else if strings.HasPrefix(tag, "max=") {
 			maxValue, err := strconv.Atoi(strings.TrimPrefix(tag, "max="))
 			if err != nil {
@@ -114,6 +119,8 @@ func ParseBindingTag(bindingTag string, fieldSchema *map[string]interface{}) {
 			}
 		}
 	}
+
+	return isRequired
 }
 
 func ToSwaggerType(fieldType reflect.Type) string {

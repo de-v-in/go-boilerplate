@@ -6,9 +6,13 @@ package db
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type Querier interface {
+	CreateArticle(ctx context.Context, arg CreateArticleParams) (uuid.UUID, error)
+	GetArticleById(ctx context.Context, id uuid.UUID) (Article, error)
 	GetArticles(ctx context.Context) ([]Article, error)
 }
 

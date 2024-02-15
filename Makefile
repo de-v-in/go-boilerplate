@@ -28,3 +28,5 @@ sqlc:
 migrate:
 	migrate create -ext sql -dir db/migration -seq init_schema
 
+migrate_up:
+	migrate -path db/migration -database "postgresql://postgres:helloworld@localhost:5430/postgres?sslmode=disable" -verbose up

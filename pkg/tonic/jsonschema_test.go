@@ -1,11 +1,11 @@
-package jsonschema_test
+package tonic_test
 
 import (
 	"encoding/json"
 	"reflect"
 	"testing"
 
-	jsonschema "github.com/phucvinh57/go-crud-example/internal/pkg"
+	"github.com/phucvinh57/go-crud-example/pkg/tonic"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,17 +35,17 @@ func TestToSwaggerType(t *testing.T) {
 		field := dataType.Field(i)
 		switch field.Name {
 		case "Name":
-			assert.Equal(t, "string", jsonschema.ToSwaggerType(field.Type))
+			assert.Equal(t, "string", tonic.ToSwaggerType(field.Type))
 		case "Age":
-			assert.Equal(t, "integer", jsonschema.ToSwaggerType(field.Type))
+			assert.Equal(t, "integer", tonic.ToSwaggerType(field.Type))
 		case "IsAdmin":
-			assert.Equal(t, "boolean", jsonschema.ToSwaggerType(field.Type))
+			assert.Equal(t, "boolean", tonic.ToSwaggerType(field.Type))
 		case "Salary":
-			assert.Equal(t, "number", jsonschema.ToSwaggerType(field.Type))
+			assert.Equal(t, "number", tonic.ToSwaggerType(field.Type))
 		case "Childs":
-			assert.Equal(t, "array", jsonschema.ToSwaggerType(field.Type))
+			assert.Equal(t, "array", tonic.ToSwaggerType(field.Type))
 		case "Address":
-			assert.Equal(t, "object", jsonschema.ToSwaggerType(field.Type))
+			assert.Equal(t, "object", tonic.ToSwaggerType(field.Type))
 		}
 	}
 }
@@ -54,7 +54,7 @@ func TestParseBindingTagWithNumberType(t *testing.T) {
 	bindingTag := "required,min=5,max=10,len=10,email,number,url"
 	schema := make(map[string]interface{})
 	schema["type"] = "number"
-	jsonschema.ParseBindingTag(bindingTag, &schema)
+	tonic.ParseBindingTag(bindingTag, &schema)
 	assert.Equal(t, 5, schema["minimum"])
 	assert.Equal(t, 10, schema["maximum"])
 	assert.Equal(t, true, schema["required"])
@@ -65,7 +65,7 @@ func TestParseBindingTagWithStringType(t *testing.T) {
 	schema := make(map[string]interface{})
 	schema["type"] = "string"
 
-	jsonschema.ParseBindingTag(bindingTag, &schema)
+	tonic.ParseBindingTag(bindingTag, &schema)
 
 	assert.Equal(t, 5, schema["minLength"])
 	assert.Equal(t, 10, schema["maxLength"])
@@ -74,9 +74,9 @@ func TestParseBindingTagWithStringType(t *testing.T) {
 	assert.Equal(t, 10, schema["length"])
 }
 
-func TestGenJSONSchema(t *testing.T) {
-	// jsonschema.GenJSONSchema(Person{})
-	schema := jsonschema.ToSwaggerSchema(reflect.TypeOf(Person{}))
+func TestGentonic(t *testing.T) {
+	// tonic.Gentonic(Person{})
+	schema := tonic.ToSwaggerSchema(reflect.TypeOf(Person{}))
 	bytes, _ := json.Marshal(schema)
 	t.Log(string(bytes))
 }

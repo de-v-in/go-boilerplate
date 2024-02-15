@@ -2,14 +2,12 @@ package main
 
 import (
 	"context"
-	"fmt"
-
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 	dbPkg "github.com/phucvinh57/go-crud-example/db"
 	sqlc "github.com/phucvinh57/go-crud-example/db/sqlc"
 	"github.com/phucvinh57/go-crud-example/internal/app/controllers"
-	jsonschema "github.com/phucvinh57/go-crud-example/internal/pkg"
+	"github.com/phucvinh57/go-crud-example/pkg/tonic"
 	"github.com/rs/zerolog"
 )
 
@@ -32,13 +30,53 @@ func initServer() {
 }
 
 func setupRoutes() {
+	tonic.InitSwagger()
+
 	article := router.Group("articles")
 	{
-		schema := jsonschema.GenJSONSchema(controllers.PostDTO{})
-		fmt.Println(schema)
-
 		ctrler := controllers.NewArticleCrtler(db, ctx)
-		article.GET("", ctrler.GetArticles)
+		routeDefs := []tonic.RouteDef{
+			{
+				Method: tonic.Get,
+				Url:    "",
+				Schema: tonic.RouteSchema{
+					Summary: "Get all articles",
+					Response: map[int]interface{}{
+						200: []controllers.ArticleDTO{},
+					},
+				},
+				Handler: ctrler.GetArticles,
+			},
+			{
+				Method: tonic.Post,
+				Url:    "",
+				Schema: tonic.RouteSchema{
+					Summary: "Create an article",
+					Body:    controllers.ArticleMutationDTO{},
+					Response: map[int]interface{}{
+						200: gin.H{"id": "string"},
+					},
+				},
+				Handler: ctrler.CreateArticle,
+			},
+			{
+				Method: tonic.Get,
+				Url:    ":id",
+				Schema: tonic.RouteSchema{
+					Params: struct {
+						ID string `json:"id" binding:"required"`
+					}{},
+					Response: map[int]interface{}{
+						200: controllers.ArticleDTO{},
+					},
+				},
+				Handler: ctrler.GetArticleById,
+			},
+		}
+		for i := range routeDefs {
+			routeDefs[i].Tags = []string{"articles"}
+		}
+		tonic.CreateRoutes(article, routeDefs)
 	}
 }
 

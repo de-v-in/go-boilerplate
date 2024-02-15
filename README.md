@@ -16,7 +16,6 @@ Package-Oriented-Design guidelines: <https://github.com/ardanlabs/gotraining/blo
 
 - [Go](https://golang.org/dl/) v1.21.6
 - [Docker](https://docs.docker.com/get-docker/) v25.0.3
-- [Swag](https://github.com/swaggo/swag) v1.16.3: Automatically generate RESTful API documentation with Swagger 2.0 for Go
 - [Sqlc](https://github.com/sqlc-dev/sqlc) v1.25.0: Generate type safe Go queries & models from raw SQL
 - [Migrate](https://github.com/golang-migrate/migrate) v4.17.0: Database migration tool
 
