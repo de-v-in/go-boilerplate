@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 	dbPkg "github.com/phucvinh57/go-crud-example/db"
@@ -9,6 +11,7 @@ import (
 	"github.com/phucvinh57/go-crud-example/internal/app/controllers"
 	"github.com/phucvinh57/go-crud-example/pkg/tonic"
 	"github.com/rs/zerolog"
+	"github.com/flowchartsman/swaggerui"
 )
 
 var (
@@ -80,8 +83,14 @@ func setupRoutes() {
 	}
 }
 
+func hostSwagger() {
+	spec := tonic.GetApiSpecs()
+	app.GET("/docs/*w", gin.WrapH(http.StripPrefix("/docs", swaggerui.Handler(spec))))
+}
+
 func main() {
 	initServer()
 	setupRoutes()
+	hostSwagger()
 	app.Run(":8080")
 }

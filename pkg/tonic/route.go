@@ -37,23 +37,23 @@ type RouteDef struct {
 	Schema  RouteSchema
 }
 
-var ApiSpec = make(map[string]any)
+var apiSpec = make(map[string]any)
 
 func InitSwagger() {
-	ApiSpec["openapi"] = "3.0.0"
-	ApiSpec["info"] = map[string]any{
+	apiSpec["openapi"] = "3.0.0"
+	apiSpec["info"] = map[string]any{
 		"title":   "Go CRUD Example",
 		"version": "1.0.0",
 	}
-	ApiSpec["components"] = map[string]any{
+	apiSpec["components"] = map[string]any{
 		"schemas": make(map[string]any),
 	}
-	ApiSpec["paths"] = make(map[string]any)
+	apiSpec["paths"] = make(map[string]any)
 }
 
 func CreateRoutes(router *gin.RouterGroup, routeDefs []RouteDef) {
 	basePath := router.BasePath()
-	apiSpecPaths, _ := ApiSpec["paths"].(map[string]any)
+	apiSpecPaths, _ := apiSpec["paths"].(map[string]any)
 
 	for _, routeDef := range routeDefs {
 		if routeDef.Url == "/" {
@@ -166,9 +166,11 @@ func CreateRoutes(router *gin.RouterGroup, routeDefs []RouteDef) {
 
 		pathSpec[httpMethod] = handlerSpec
 	}
+}
 
-	bytes, _ := json.Marshal(ApiSpec)
-	fmt.Println(string(bytes))
+func GetApiSpecs() []byte {
+	b, _ := json.Marshal(apiSpec)
+	return b
 }
 
 func toSwaggerAPIPath(path string) string {
