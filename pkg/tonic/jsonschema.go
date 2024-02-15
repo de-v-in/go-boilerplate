@@ -27,6 +27,8 @@ func ToSwaggerSchema(t reflect.Type) map[string]interface{} {
 		schema["type"] = "number"
 	} else if kind == reflect.Bool {
 		schema["type"] = "boolean"
+	} else if kind == reflect.Ptr {
+		schema = ToSwaggerSchema(t.Elem())
 	} else if kind == reflect.Array || kind == reflect.Slice {
 		schema["type"] = "array"
 		schema["items"] = ToSwaggerSchema(t.Elem())
