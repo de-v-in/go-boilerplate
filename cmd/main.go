@@ -9,7 +9,7 @@ import (
 	dbPkg "github.com/phucvinh57/go-crud-example/db"
 	sqlc "github.com/phucvinh57/go-crud-example/db/sqlc"
 	"github.com/phucvinh57/go-crud-example/internal/app/controllers"
-	"github.com/phucvinh57/go-crud-example/pkg/tonic"
+	"github.com/TickLabVN/tonic"
 	"github.com/rs/zerolog"
 )
 
