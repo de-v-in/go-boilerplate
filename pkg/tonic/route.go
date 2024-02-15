@@ -6,19 +6,31 @@ import (
 	"reflect"
 	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
 const (
-	Get     = 1
-	Post    = 2
-	Put     = 3
-	Delete  = 4
-	Patch   = 5
-	Options = 6
-	Head    = 7
+	Get     = "GET"
+	Post    = "POST"
+	Put     = "PUT"
+	Delete  = "DELETE"
+	Patch   = "PATCH"
+	Options = "OPTIONS"
+	Head    = "HEAD"
+
+	PathParam  = "path"
+	QueryParam = "query"
 )
+
+type Route struct {
+	Method  string
+	Url     string
+	Tags    []string
+	Schema  *RouteSchema
+	Handler func(c *gin.Context)
+}
 
 type RouteSchema struct {
 	Summary     string
@@ -26,149 +38,119 @@ type RouteSchema struct {
 	Querystring any
 	Params      any
 	Body        any
-	Response    map[int]any `json:"response"`
+	Response    map[int]any
 }
 
-type RouteDef struct {
-	Method  int8
-	Url     string
-	Handler func(c *gin.Context)
-	Tags    []string
-	Schema  RouteSchema
+var apiSpec = make(map[string]any)
+
+func GetApiSpecs() []byte {
+	b, _ := json.Marshal(apiSpec)
+	return b
 }
 
-var ApiSpec = make(map[string]any)
-
-func InitSwagger() {
-	ApiSpec["openapi"] = "3.0.0"
-	ApiSpec["info"] = map[string]any{
+func Init() {
+	apiSpec["openapi"] = "3.0.0"
+	apiSpec["info"] = map[string]any{
 		"title":   "Go CRUD Example",
 		"version": "1.0.0",
 	}
-	ApiSpec["components"] = map[string]any{
+	apiSpec["components"] = map[string]any{
 		"schemas": make(map[string]any),
 	}
-	ApiSpec["paths"] = make(map[string]any)
+	apiSpec["paths"] = make(map[string]any)
 }
 
-func CreateRoutes(router *gin.RouterGroup, routeDefs []RouteDef) {
-	basePath := router.BasePath()
-	apiSpecPaths, _ := ApiSpec["paths"].(map[string]any)
+func CreateRoutes(rg *gin.RouterGroup, routes []Route) {
+	basePath := rg.BasePath()
+	apiSpecPaths, _ := apiSpec["paths"].(map[string]any)
 
-	for _, routeDef := range routeDefs {
-		if routeDef.Url == "/" {
-			routeDef.Url = ""
-		} else if len(routeDef.Url) > 0 && routeDef.Url[0] != '/' {
-			routeDef.Url = fmt.Sprintf("/%s", routeDef.Url)
-		}
+	for routeIdx := range routes {
+		route := &routes[routeIdx]
+		route.Url = normalizePath(route.Url)
+		rg.Handle(route.Method, route.Url, route.Handler)
+		apiPath := toSwaggerAPIPath(fmt.Sprintf("%s%s", basePath, route.Url))
 
-		httpMethod := ""
-
-		switch routeDef.Method {
-		case Get:
-			httpMethod = "get"
-			router.GET(routeDef.Url, routeDef.Handler)
-		case Post:
-			httpMethod = "post"
-			router.POST(routeDef.Url, routeDef.Handler)
-		case Put:
-			httpMethod = "put"
-			router.PUT(routeDef.Url, routeDef.Handler)
-		case Delete:
-			httpMethod = "delete"
-			router.DELETE(routeDef.Url, routeDef.Handler)
-		case Patch:
-			httpMethod = "patch"
-			router.PATCH(routeDef.Url, routeDef.Handler)
-		case Options:
-			httpMethod = "options"
-			router.OPTIONS(routeDef.Url, routeDef.Handler)
-		case Head:
-			httpMethod = "head"
-			router.HEAD(routeDef.Url, routeDef.Handler)
-		}
-
-		apiPath := toSwaggerAPIPath(fmt.Sprintf("%s%s", basePath, routeDef.Url))
-
-		pathSpecRaw, apiPathExisted := apiSpecPaths[apiPath]
-
+		pathSpec, apiPathExisted := apiSpecPaths[apiPath]
 		if !apiPathExisted {
-			pathSpecRaw = make(map[string]any)
-			apiSpecPaths[apiPath] = pathSpecRaw
+			pathSpec = make(map[string]any)
+			apiSpecPaths[apiPath] = pathSpec
 		}
+		pathSpec.(map[string]any)[strings.ToLower(route.Method)] = buildHandlerSpec(route)
+	}
+}
 
-		pathSpec, _ := pathSpecRaw.(map[string]any)
-		handlerSpec := make(map[string]any)
-		if routeDef.Schema.Summary != "" {
-			handlerSpec["summary"] = routeDef.Schema.Summary
-		}
-		if routeDef.Schema.Description != "" {
-			handlerSpec["description"] = routeDef.Schema.Description
-		}
-		if routeDef.Tags != nil {
-			handlerSpec["tags"] = routeDef.Tags
-		}
-
-		handlerSpec["parameters"] = []map[string]any{}
-		if routeDef.Schema.Params != nil {
-			// Param is always a struct
-			paramType := reflect.TypeOf(routeDef.Schema.Params)
-			paramObjSchema := ToSwaggerSchema(paramType)
-			paramSchema := map[string]any{}
-			for propName, propSchema := range paramObjSchema["properties"].(map[string]any) {
-				paramSchema["in"] = "path"
-				paramSchema["name"] = propName
-				paramSchema["required"] = true
-				paramSchema["schema"] = propSchema
-
-				handlerSpec["parameters"] = append(handlerSpec["parameters"].([]map[string]any), paramSchema)
-			}
-		}
-		if routeDef.Schema.Querystring != nil {
-			// Querystring is always a struct
-			queryType := reflect.TypeOf(routeDef.Schema.Querystring)
-			querySchema := ToSwaggerSchema(queryType)
-			for propName, propSchema := range querySchema["properties"].(map[string]any) {
-				propSchema.(map[string]any)["in"] = "query"
-				propSchema.(map[string]any)["name"] = propName
-				propSchema.(map[string]any)["required"] = slices.Contains(querySchema["required"].([]string), propName)
-				propSchema.(map[string]any)["schema"] = propSchema
-
-				handlerSpec["parameters"] = append(handlerSpec["parameters"].([]any), propSchema)
-			}
-		}
-
-		if routeDef.Schema.Body != nil {
-			t := reflect.TypeOf(routeDef.Schema.Body)
-			handlerSpec["requestBody"] = map[string]any{
-				"content": map[string]any{
-					"application/json": map[string]any{
-						"schema": ToSwaggerSchema(t),
-					},
-				},
-				"required": true,
-			}
-		}
-		if routeDef.Schema.Response != nil {
-			handlerSpec["responses"] = map[int]any{}
-			for status, response := range routeDef.Schema.Response {
-				respType := reflect.TypeOf(response)
-				handlerSpec["responses"].(map[int]any)[status] = map[string]any{
-					"content": map[string]any{
-						"application/json": map[string]any{
-							"schema": ToSwaggerSchema(respType),
-						},
-					},
-					"description": "Default description",
-				}
-			}
-		}
-
-		pathSpec[httpMethod] = handlerSpec
+func buildHandlerSpec(route *Route) map[string]any {
+	handlerSpec := make(map[string]any)
+	if route.Schema == nil {
+		return handlerSpec
 	}
 
-	bytes, _ := json.Marshal(ApiSpec)
-	fmt.Println(string(bytes))
+	if route.Schema.Summary != "" {
+		handlerSpec["summary"] = route.Schema.Summary
+	}
+	if route.Schema.Description != "" {
+		handlerSpec["description"] = route.Schema.Description
+	}
+	if route.Tags != nil {
+		handlerSpec["tags"] = route.Tags
+	}
+
+	var paramsSpec []map[string]any
+	if route.Schema.Params != nil {
+		paramsSpec = buildParamSpecs(PathParam, &route.Schema.Params)
+	}
+	if route.Schema.Querystring != nil {
+		paramsSpec = append(paramsSpec, buildParamSpecs(QueryParam, &route.Schema.Querystring)...)
+	}
+	if len(paramsSpec) > 0 {
+		handlerSpec["parameters"] = paramsSpec
+	}
+
+	if route.Schema.Body != nil {
+		handlerSpec["requestBody"] = map[string]any{
+			"content": map[string]any{
+				"application/json": map[string]any{
+					"schema": ToSwaggerSchema(reflect.TypeOf(route.Schema.Body)),
+				},
+			},
+			"required": true,
+		}
+	}
+
+	if route.Schema.Response != nil {
+		handlerSpec["responses"] = map[int]any{}
+		for status, response := range route.Schema.Response {
+			respType := reflect.TypeOf(response)
+			handlerSpec["responses"].(map[int]any)[status] = map[string]any{
+				"content": map[string]any{
+					"application/json": map[string]any{
+						"schema": ToSwaggerSchema(respType),
+					},
+				},
+				"description": "Default description",
+			}
+		}
+	}
+
+	return handlerSpec
+}
+
+func buildParamSpecs(paramType string, params *any) []map[string]any {
+	paramSpecs := []map[string]any{}
+	t := reflect.TypeOf(*params)
+	paramObjSchema := ToSwaggerSchema(t)
+
+	for propName, propSchema := range paramObjSchema["properties"].(map[string]any) {
+		paramSchema := map[string]any{
+			"in":       paramType,
+			"name":     propName,
+			"required": slices.Contains(paramObjSchema["required"].([]string), propName),
+			"schema":   propSchema,
+		}
+		paramSpecs = append(paramSpecs, paramSchema)
+	}
+
+	return paramSpecs
 }
 
 func toSwaggerAPIPath(path string) string {
@@ -177,4 +159,13 @@ func toSwaggerAPIPath(path string) string {
 	})
 
 	return modifiedPath
+}
+
+func normalizePath(path string) string {
+	if path == "/" {
+		return ""
+	} else if len(path) > 0 && path[0] != '/' {
+		return fmt.Sprintf("/%s", path)
+	}
+	return path
 }

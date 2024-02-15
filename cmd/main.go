@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"net/http"
+
+	"github.com/flowchartsman/swaggerui"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 	dbPkg "github.com/phucvinh57/go-crud-example/db"
@@ -30,16 +33,16 @@ func initServer() {
 }
 
 func setupRoutes() {
-	tonic.InitSwagger()
+	tonic.Init()
 
 	article := router.Group("articles")
 	{
 		ctrler := controllers.NewArticleCrtler(db, ctx)
-		routeDefs := []tonic.RouteDef{
+		routeDefs := []tonic.Route{
 			{
 				Method: tonic.Get,
 				Url:    "",
-				Schema: tonic.RouteSchema{
+				Schema: &tonic.RouteSchema{
 					Summary: "Get all articles",
 					Response: map[int]interface{}{
 						200: []controllers.ArticleDTO{},
@@ -50,11 +53,13 @@ func setupRoutes() {
 			{
 				Method: tonic.Post,
 				Url:    "",
-				Schema: tonic.RouteSchema{
+				Schema: &tonic.RouteSchema{
 					Summary: "Create an article",
 					Body:    controllers.ArticleMutationDTO{},
 					Response: map[int]interface{}{
-						200: gin.H{"id": "string"},
+						200: struct {
+							ID string `json:"id"`
+						}{},
 					},
 				},
 				Handler: ctrler.CreateArticle,
@@ -62,7 +67,7 @@ func setupRoutes() {
 			{
 				Method: tonic.Get,
 				Url:    ":id",
-				Schema: tonic.RouteSchema{
+				Schema: &tonic.RouteSchema{
 					Params: struct {
 						ID string `json:"id" binding:"required"`
 					}{},
@@ -80,8 +85,14 @@ func setupRoutes() {
 	}
 }
 
+func hostSwagger() {
+	spec := tonic.GetApiSpecs()
+	app.GET("/docs/*w", gin.WrapH(http.StripPrefix("/docs", swaggerui.Handler(spec))))
+}
+
 func main() {
 	initServer()
 	setupRoutes()
+	hostSwagger()
 	app.Run(":8080")
 }
