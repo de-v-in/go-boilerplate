@@ -1,7 +1,6 @@
 package tonic
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -19,9 +18,11 @@ const (
 	Patch   = "PATCH"
 	Options = "OPTIONS"
 	Head    = "HEAD"
+)
 
-	PathParam  = "path"
-	QueryParam = "query"
+const (
+	pathParam  = "path"
+	queryParam = "query"
 )
 
 type Route struct {
@@ -41,26 +42,13 @@ type RouteSchema struct {
 	Response    map[int]any
 }
 
-var apiSpec = make(map[string]any)
-
-func GetApiSpecs() []byte {
-	b, _ := json.Marshal(apiSpec)
-	return b
-}
-
-func Init() {
-	apiSpec["openapi"] = "3.0.0"
-	apiSpec["info"] = map[string]any{
-		"title":   "Go CRUD Example",
-		"version": "1.0.0",
-	}
-	apiSpec["components"] = map[string]any{
-		"schemas": make(map[string]any),
-	}
-	apiSpec["paths"] = make(map[string]any)
-}
+var apiSpec map[string]any
 
 func CreateRoutes(rg *gin.RouterGroup, routes []Route) {
+	if !isInit {
+		panic("Tonic must be initialized first!")
+	}
+
 	basePath := rg.BasePath()
 	apiSpecPaths, _ := apiSpec["paths"].(map[string]any)
 
@@ -97,10 +85,10 @@ func buildHandlerSpec(route *Route) map[string]any {
 
 	var paramsSpec []map[string]any
 	if route.Schema.Params != nil {
-		paramsSpec = buildParamSpecs(PathParam, &route.Schema.Params)
+		paramsSpec = buildParamSpecs(pathParam, &route.Schema.Params)
 	}
 	if route.Schema.Querystring != nil {
-		paramsSpec = append(paramsSpec, buildParamSpecs(QueryParam, &route.Schema.Querystring)...)
+		paramsSpec = append(paramsSpec, buildParamSpecs(queryParam, &route.Schema.Querystring)...)
 	}
 	if len(paramsSpec) > 0 {
 		handlerSpec["parameters"] = paramsSpec

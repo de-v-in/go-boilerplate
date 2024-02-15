@@ -1,19 +1,11 @@
 package tonic
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
 )
-
-func GenJSONSchema(data interface{}) string {
-	dataType := reflect.TypeOf(data)
-	schema := ToSwaggerSchema(dataType)
-	bytes, _ := json.Marshal(schema)
-	return string(bytes)
-}
 
 func ToSwaggerSchema(t reflect.Type) map[string]interface{} {
 	kind := t.Kind()

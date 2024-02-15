@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/flowchartsman/swaggerui"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 	dbPkg "github.com/phucvinh57/go-crud-example/db"
@@ -33,12 +32,19 @@ func initServer() {
 }
 
 func setupRoutes() {
-	tonic.Init()
+	tonic.Init(&tonic.Config{
+		OpenAPIVersion: "3.0.0",
+		Info: map[string]interface{}{
+			"title":       "Go CRUD Example",
+			"description": "A simple CRUD example using Go and PostgreSQL",
+			"version":     "1.0.0",
+		},
+	})
 
 	article := router.Group("articles")
 	{
 		ctrler := controllers.NewArticleCrtler(db, ctx)
-		routeDefs := []tonic.Route{
+		routes := []tonic.Route{
 			{
 				Method: tonic.Get,
 				Url:    "",
@@ -78,21 +84,27 @@ func setupRoutes() {
 				Handler: ctrler.GetArticleById,
 			},
 		}
-		for i := range routeDefs {
-			routeDefs[i].Tags = []string{"articles"}
+		for i := range routes {
+			routes[i].Tags = []string{"articles"}
 		}
-		tonic.CreateRoutes(article, routeDefs)
+		tonic.CreateRoutes(article, routes)
 	}
-}
-
-func hostSwagger() {
-	spec := tonic.GetApiSpecs()
-	app.GET("/docs/*w", gin.WrapH(http.StripPrefix("/docs", swaggerui.Handler(spec))))
 }
 
 func main() {
 	initServer()
+
+	tonic.Init(&tonic.Config{
+		OpenAPIVersion: "3.0.0",
+		Info: map[string]interface{}{
+			"title":       "Go CRUD Example",
+			"description": "A simple CRUD example using Go and PostgreSQL",
+			"version":     "1.0.0",
+		},
+	})
+
 	setupRoutes()
-	hostSwagger()
+
+	app.GET("/docs/*w", gin.WrapH(http.StripPrefix("/docs", tonic.GetHandler())))
 	app.Run(":8080")
 }
