@@ -54,7 +54,9 @@ func setupRoutes() {
 						200: []controllers.ArticleDTO{},
 					},
 				},
-				Handler: ctrler.GetArticles,
+				HandlerRegister: func(path string) {
+					article.GET(path, ctrler.GetArticles)
+				},
 			},
 			{
 				Method: tonic.Post,
@@ -68,7 +70,9 @@ func setupRoutes() {
 						}{},
 					},
 				},
-				Handler: ctrler.CreateArticle,
+				HandlerRegister: func(path string) {
+					article.POST(path, ctrler.CreateArticle)
+				},
 			},
 			{
 				Method: tonic.Get,
@@ -81,13 +85,15 @@ func setupRoutes() {
 						200: controllers.ArticleDTO{},
 					},
 				},
-				Handler: ctrler.GetArticleById,
+				HandlerRegister: func(path string) {
+					article.GET(path, ctrler.GetArticleById)
+				},
 			},
 		}
 		for i := range routes {
 			routes[i].Tags = []string{"articles"}
 		}
-		tonic.CreateRoutes(article, routes)
+		tonic.CreateRoutes(article.BasePath(), routes)
 	}
 }
 
